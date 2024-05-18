@@ -1,71 +1,65 @@
 package meu_robo;
 
-import robocode.AdvancedRobot;
-import robocode.ScannedRobotEvent;
-import robocode.HitByBulletEvent;
-import robocode.HitWallEvent;
+import robocode.*;
 import java.awt.Color;
 
 public class MeuRoboEvasivo extends AdvancedRobot {
-    private boolean movimentoFrente = true; // Flag para controlar a direção do movimento
+    private int moveDirection = 1;
 
     @Override
     public void run() {
         setColors(Color.blue, Color.white, Color.red); // Define as cores do robô
-        
-        setAdjustGunForRobotTurn(true); // Mantém o canhão ajustado enquanto o robô se move
-        setAdjustRadarForGunTurn(true); // Mantém o radar ajustado enquanto o canhão se move
-        setAdjustRadarForRobotTurn(true); // Mantém o radar ajustado enquanto o robô se move
-        
+
+        setAdjustGunForRobotTurn(true);
+        setAdjustRadarForGunTurn(true);
+        setAdjustRadarForRobotTurn(true);
+
         while (true) {
-            // Movimenta-se continuamente para frente ou para trás
-            if (movimentoFrente) {
-                setAhead(Double.POSITIVE_INFINITY);
-            } else {
-                setBack(Double.POSITIVE_INFINITY);
-            }
+            setTurnRadarRight(360); // Continua girando o radar para procurar inimigos
+            setAhead(100 * moveDirection);
             execute();
         }
     }
 
     @Override
     public void onScannedRobot(ScannedRobotEvent event) {
-        // Ajusta o radar para o robô inimigo
         double bearing = event.getBearing();
         double absoluteBearing = getHeading() + bearing;
+
+        // Ajusta o radar para o robô inimigo
         setTurnRadarRight(normalRelativeAngleDegrees(absoluteBearing - getRadarHeading()));
-        
+
         // Ajusta a mira para o robô inimigo
         setTurnGunRight(normalRelativeAngleDegrees(absoluteBearing - getGunHeading()));
-        
-        // Atira se a arma estiver resfriada
+
+        // Atira sempre que a arma estiver resfriada
         if (getGunHeat() == 0) {
-            double distance = event.getDistance();
-            if (distance < 200) {
-                fire(3); // Tiro forte para alvos próximos
-            } else {
-                fire(1); // Tiro fraco para alvos distantes
-            }
+            fire(2); // Tiro de potência média constante
         }
-        
-        // Movimenta-se em direção ao inimigo
-        setTurnRight(bearing);
-        if (event.getDistance() > 300) {
-            setAhead(100);
+
+        // Movimenta-se de forma mais evasiva ao detectar um robô
+        if (event.getDistance() < 150) {
+            moveDirection = -moveDirection;
+            setAhead(100 * moveDirection);
         } else {
-            setBack(100);
+            setTurnRight(bearing);
+            setAhead(100);
         }
     }
 
     @Override
     public void onHitByBullet(HitByBulletEvent event) {
-        // Reverte a direção do movimento quando atingido por uma bala
-        movimentoFrente = !movimentoFrente;
+        // Reverte a direção do movimento e dá um "dash" para frente ou para trás
+        moveDirection = -moveDirection;
+        setAhead(150 * moveDirection); // Aumenta a distância do "dash" para 150
+        execute();
     }
 
     @Override
     public void onHitWall(HitWallEvent event) {
         // Reverte a direção do movimento ao colidir com a parede
-        movimentoFrente = !movimentoFrente;
+        moveDirection = -moveDirection;
+        setBack(100 * moveDirection);
+        execute();
     }
 }
